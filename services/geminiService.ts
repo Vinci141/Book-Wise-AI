@@ -8,38 +8,14 @@ if (!process.env.API_KEY) {
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 const model = "gemini-2.5-flash";
 
-const summarySchema = {
-  type: Type.OBJECT,
-  properties: {
-    author: {
-        type: Type.STRING,
-        description: "The full name of the book's author. It is crucial that this is factually correct.",
-    },
-    summary: {
-      type: Type.STRING,
-      description: "A concise summary of the book, capturing the main ideas and themes. Should be around 3-4 paragraphs.",
-    },
-    keyLearnings: {
-      type: Type.ARRAY,
-      description: "A list of 5-7 key, actionable learnings from the book.",
-      items: {
-        type: Type.OBJECT,
-        properties: {
-          learning: {
-            type: Type.STRING,
-            description: "A single key learning or takeaway from the book.",
-          },
-          visual: {
-            type: Type.STRING,
-            description: "A single, relevant emoji that visually represents the key learning.",
-          },
-        },
-        required: ["learning", "visual"],
-      },
-    },
-  },
-  required: ["author", "summary", "keyLearnings"],
+// Note: This schema is now for reference, as we instruct the model in the prompt
+// to generate a JSON string when using Google Search grounding.
+const summarySchemaReference = {
+    author: "string",
+    summary: "string",
+    keyLearnings: [{ learning: "string", visual: "string" }],
 };
+
 
 const recommendationsSchema = {
     type: Type.OBJECT,
@@ -87,22 +63,38 @@ const recommendationsSchema = {
 
 export const generateSummaryAndLearnings = async (bookTitle: string): Promise<SummaryData> => {
   try {
-    const prompt = `For the book titled "${bookTitle}", provide its author, a concise summary, and 5-7 key actionable learnings. It is crucial that the author's name is correct. Provide a relevant emoji for each key learning.`;
+    // Using Google Search grounding for factual accuracy.
+    // The prompt now explicitly asks for a JSON object string as output.
+    const prompt = `Using Google Search to ensure 100% factual accuracy, provide the correct author for the book titled "${bookTitle}". Then, generate a concise summary and 5-7 key actionable learnings, each with a relevant emoji.
+    
+    Return the entire response as a single, raw JSON object string. Do not use markdown (e.g., \`\`\`json). The JSON object must have this exact structure: 
+    { 
+      "author": "string", 
+      "summary": "string", 
+      "keyLearnings": [{ "learning": "string", "visual": "string" }] 
+    }`;
     
     const response = await ai.models.generateContent({
       model: model,
       contents: prompt,
       config: {
-        responseMimeType: "application/json",
-        responseSchema: summarySchema,
+        // Use Google Search for grounding to improve factual accuracy.
+        // responseSchema and responseMimeType are not compatible with this tool.
+        tools: [{googleSearch: {}}],
       },
     });
 
     const jsonText = response.text.trim();
-    return JSON.parse(jsonText) as SummaryData;
+    // In case the model wraps the response in markdown, we extract the JSON object.
+    const match = jsonText.match(/\{[\s\S]*\}/);
+    if (!match) {
+        throw new Error("Invalid JSON response from the model.");
+    }
+
+    return JSON.parse(match[0]) as SummaryData;
   } catch (error) {
     console.error("Error generating summary:", error);
-    throw new Error("Failed to generate summary. Please check the book title and try again.");
+    throw new Error("Failed to generate summary. The book may not be well-known or the title could be incorrect.");
   }
 };
 
