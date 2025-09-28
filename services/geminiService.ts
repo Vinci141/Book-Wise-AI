@@ -1,4 +1,3 @@
-
 import { GoogleGenAI, Type } from "@google/genai";
 import type { SummaryData, Recommendations } from '../types';
 
@@ -12,6 +11,10 @@ const model = "gemini-2.5-flash";
 const summarySchema = {
   type: Type.OBJECT,
   properties: {
+    author: {
+        type: Type.STRING,
+        description: "The full name of the book's author. It is crucial that this is factually correct.",
+    },
     summary: {
       type: Type.STRING,
       description: "A concise summary of the book, capturing the main ideas and themes. Should be around 3-4 paragraphs.",
@@ -35,7 +38,7 @@ const summarySchema = {
       },
     },
   },
-  required: ["summary", "keyLearnings"],
+  required: ["author", "summary", "keyLearnings"],
 };
 
 const recommendationsSchema = {
@@ -84,7 +87,7 @@ const recommendationsSchema = {
 
 export const generateSummaryAndLearnings = async (bookTitle: string): Promise<SummaryData> => {
   try {
-    const prompt = `Generate a concise summary and 5-7 key actionable learnings for the book titled "${bookTitle}". Provide a relevant emoji for each key learning.`;
+    const prompt = `For the book titled "${bookTitle}", provide its author, a concise summary, and 5-7 key actionable learnings. It is crucial that the author's name is correct. Provide a relevant emoji for each key learning.`;
     
     const response = await ai.models.generateContent({
       model: model,

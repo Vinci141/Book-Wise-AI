@@ -1,10 +1,10 @@
-
 export interface KeyLearning {
   learning: string;
   visual: string; // Emoji or simple visual concept
 }
 
 export interface SummaryData {
+  author: string;
   summary: string;
   keyLearnings: KeyLearning[];
 }
