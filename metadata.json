@@ -1,0 +1,5 @@
+{
+  "name": "BookWise AI",
+  "description": "An AI-powered application to summarize books, extract key learnings, and provide personalized recommendations for further learning based on your interests.",
+  "requestFramePermissions": []
+}
